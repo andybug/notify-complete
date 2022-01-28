@@ -1,6 +1,5 @@
 use notify_rust::{Timeout, Urgency};
 use serde_derive::Deserialize;
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::vec::Vec;
@@ -30,7 +29,7 @@ pub struct Profile {
 }
 
 pub struct Config {
-    pub profiles: HashMap<String, Profile>,
+    pub profile: Profile,
 }
 
 impl Profile {
@@ -125,21 +124,21 @@ impl Profile {
 
 impl Config {
     fn default_config() -> Config {
-        let mut profiles = HashMap::new();
-        profiles.insert(String::from("default"), Profile::default_profile());
-        Config { profiles: profiles }
+        Config {
+            profile: Profile::default_profile(),
+        }
     }
 
-    fn merge_toml(&mut self, other: &TomlConfig) {
+    fn merge_toml(&mut self, target_profile: &str, other: &TomlConfig) {
         if other.profile.is_none() {
             // config file contained no profiles, we can safely return
             return;
         }
 
         for profile in other.profile.as_ref().unwrap() {
-            let key = String::from(&profile.name);
-            let val = Profile::from_toml(profile);
-            self.profiles.insert(key, val);
+            if profile.name == target_profile {
+                self.profile = Profile::from_toml(profile);
+            }
         }
     }
 }
@@ -194,12 +193,12 @@ fn read_config_file(path: &Path) -> Option<TomlConfig> {
     Some(conf)
 }
 
-pub fn get_config() -> Config {
+pub fn get_config(profile_name: &str) -> Config {
     let mut config = Config::default_config();
     let config_path = get_config_path();
 
     match read_config_file(config_path.as_path()) {
-        Some(toml_config) => config.merge_toml(&toml_config),
+        Some(toml_config) => config.merge_toml(profile_name, &toml_config),
         None => (),
     }
 
