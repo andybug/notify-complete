@@ -119,11 +119,11 @@ impl Config {
         };
 
         Config {
-            body: body,
-            icon: icon,
-            summary: summary,
-            timeout: timeout,
-            urgency: urgency,
+            body,
+            icon,
+            summary,
+            timeout,
+            urgency,
         }
     }
 }
@@ -191,10 +191,24 @@ pub fn get_config(profile: &str) -> Config {
 
 #[cfg(test)]
 mod tests {
+    use notify_rust::{Timeout, Urgency};
+
     use super::{Config, TomlConfig, TomlProfile};
 
     #[test]
     fn config_defaults() {
+        let tc = TomlConfig { profile: None };
+        let c = Config::from_toml("doesn't matter", &tc);
+
+        assert_eq!(c.body, Config::default_body());
+        assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.summary, Config::default_summary());
+        assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.urgency, Config::default_urgency());
+    }
+
+    #[test]
+    fn profile_defaults() {
         let tp = TomlProfile {
             name: "test".to_string(),
             body: None,
@@ -215,5 +229,207 @@ mod tests {
         assert_eq!(c.summary, Config::default_summary());
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.urgency, Config::default_urgency());
+    }
+
+    #[test]
+    fn profile_not_found() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: None,
+            urgency: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("does not exist", &tc);
+
+        assert_eq!(c.body, Config::default_body());
+        assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.summary, Config::default_summary());
+        assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.urgency, Config::default_urgency());
+    }
+
+    #[test]
+    fn profile_values() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: Some("body".to_string()),
+            icon: Some("icon".to_string()),
+            summary: Some("summary".to_string()),
+            timeout: Some(5000),
+            urgency: Some("critical".to_string()),
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+
+        assert_eq!(c.body, "body");
+        assert_eq!(c.icon, "icon");
+        assert_eq!(c.summary, "summary");
+        assert_eq!(c.timeout, Timeout::Milliseconds(5000));
+        assert_eq!(c.urgency, Urgency::Critical);
+    }
+
+    #[test]
+    fn timeout_value_less() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: Some(-2),
+            urgency: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        // with timeout < -1, print an error and return default
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.timeout, Config::default_timeout());
+    }
+
+    #[test]
+    fn timeout_value_default() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: Some(-1),
+            urgency: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.timeout, Config::default_timeout());
+    }
+
+    #[test]
+    fn timeout_value_never() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: Some(0),
+            urgency: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.timeout, Timeout::Never);
+    }
+
+    #[test]
+    fn timeout_value_ms() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: Some(5000),
+            urgency: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.timeout, Timeout::Milliseconds(5000));
+    }
+
+    #[test]
+    fn urgency_value_invalid() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: None,
+            urgency: Some("invalid".to_string()),
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        // this should print an error and return default
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.urgency, Config::default_urgency());
+    }
+
+    #[test]
+    fn urgency_value_low() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: None,
+            urgency: Some("low".to_string()),
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.urgency, Urgency::Low);
+    }
+
+    #[test]
+    fn urgency_value_normal() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: None,
+            urgency: Some("normal".to_string()),
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.urgency, Urgency::Normal);
+    }
+
+    #[test]
+    fn urgency_value_critical() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            body: None,
+            icon: None,
+            summary: None,
+            timeout: None,
+            urgency: Some("critical".to_string()),
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::from_toml("test", &tc);
+        assert_eq!(c.urgency, Urgency::Critical);
     }
 }
