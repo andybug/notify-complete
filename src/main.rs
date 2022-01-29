@@ -30,24 +30,24 @@ struct Args {
 
 fn update_conf_from_args(conf: &mut config::Config, args: &Args) {
     if args.summary.is_some() {
-        conf.profile.summary = String::from(args.summary.as_ref().unwrap());
+        conf.summary = String::from(args.summary.as_ref().unwrap());
     }
 
     if args.body.is_some() {
-        conf.profile.body = String::from(args.body.as_ref().unwrap());
+        conf.body = String::from(args.body.as_ref().unwrap());
     }
 }
 
 fn send_notification(conf: &config::Config, duration: Duration, status: ExitStatus) {
     let duration_str = format_duration(duration).to_string();
 
-    let mut body = String::from(conf.profile.body.as_str());
+    let mut body = String::from(conf.body.as_str());
     body.push('\n');
     body.push_str(&format!("Result: {}\n", status.code().unwrap()));
     body.push_str(&format!("Completed in {}", duration_str));
 
     let result = Notification::new()
-        .summary(conf.profile.summary.as_str())
+        .summary(conf.summary.as_str())
         .body(body.as_str())
         .appname("notify-complete")
         .show();

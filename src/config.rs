@@ -19,8 +19,7 @@ struct TomlConfig {
     profile: Option<Vec<TomlProfile>>,
 }
 
-pub struct Profile {
-    pub name: String,
+pub struct Config {
     pub body: String,
     pub icon: String,
     pub summary: String,
@@ -28,19 +27,14 @@ pub struct Profile {
     pub urgency: Urgency,
 }
 
-pub struct Config {
-    pub profile: Profile,
-}
-
-impl Profile {
-    fn default_profile() -> Profile {
-        Profile {
-            name: String::from("default"),
-            body: Profile::default_body(),
-            icon: Profile::default_icon(),
-            summary: Profile::default_summary(),
-            timeout: Profile::default_timeout(),
-            urgency: Profile::default_urgency(),
+impl Config {
+    fn default_config() -> Config {
+        Config {
+            body: Config::default_body(),
+            icon: Config::default_icon(),
+            summary: Config::default_summary(),
+            timeout: Config::default_timeout(),
+            urgency: Config::default_urgency(),
         }
     }
 
@@ -64,81 +58,72 @@ impl Profile {
         Urgency::Normal
     }
 
-    fn from_toml(other: &TomlProfile) -> Profile {
-        let name = String::from(&other.name);
+    fn from_toml(profile: &str, toml: &TomlConfig) -> Config {
+        if toml.profile.is_none() {
+            // no profiles in config file, return default config
+            return Config::default_config();
+        }
 
-        let body = match &other.body {
+        for toml_profile in toml.profile.as_ref().unwrap() {
+            if profile == toml_profile.name {
+                return Config::from_toml_profile(toml_profile);
+            }
+        }
+
+        return Config::default_config();
+    }
+
+    fn from_toml_profile(profile: &TomlProfile) -> Config {
+        let body = match &profile.body {
             Some(body) => String::from(body),
-            None => Profile::default_body(),
+            None => Config::default_body(),
         };
 
-        let icon = match &other.icon {
+        let icon = match &profile.icon {
             Some(icon) => String::from(icon),
-            None => Profile::default_icon(),
+            None => Config::default_icon(),
         };
 
-        let summary = match &other.summary {
+        let summary = match &profile.summary {
             Some(summary) => String::from(summary),
-            None => Profile::default_summary(),
+            None => Config::default_summary(),
         };
 
-        let timeout = match &other.timeout {
+        let timeout = match &profile.timeout {
             Some(timeout) => match *timeout {
                 -1 => Timeout::Default,
                 0 => Timeout::Never,
                 _ => {
                     if *timeout < 0 {
                         eprintln!("Invalid timeout value {}", timeout);
-                        Profile::default_timeout()
+                        Config::default_timeout()
                     } else {
                         Timeout::Milliseconds(*timeout as u32)
                     }
                 }
             },
-            None => Profile::default_timeout(),
+            None => Config::default_timeout(),
         };
 
-        let urgency = match &other.urgency {
+        let urgency = match &profile.urgency {
             Some(urgency) => match urgency.as_str() {
                 "low" => Urgency::Low,
                 "normal" => Urgency::Normal,
                 "critical" => Urgency::Critical,
                 _ => {
                     eprintln!("Invalid urgency setting '{}'", urgency);
-                    Profile::default_urgency()
+                    Config::default_urgency()
                 }
             },
-            None => Profile::default_urgency(),
+            None => Config::default_urgency(),
         };
 
-        Profile {
-            name: name,
+        Config {
             body: body,
             icon: icon,
             summary: summary,
             timeout: timeout,
             urgency: urgency,
-        }
-    }
-}
-
-impl Config {
-    fn default_config() -> Config {
-        Config {
-            profile: Profile::default_profile(),
-        }
-    }
-
-    fn merge_toml(&mut self, target_profile: &str, other: &TomlConfig) {
-        if other.profile.is_none() {
-            // config file contained no profiles, we can safely return
-            return;
-        }
-
-        for profile in other.profile.as_ref().unwrap() {
-            if profile.name == target_profile {
-                self.profile = Profile::from_toml(profile);
-            }
         }
     }
 }
@@ -193,24 +178,23 @@ fn read_config_file(path: &Path) -> Option<TomlConfig> {
     Some(conf)
 }
 
-pub fn get_config(profile_name: &str) -> Config {
-    let mut config = Config::default_config();
+pub fn get_config(profile: &str) -> Config {
     let config_path = get_config_path();
 
-    match read_config_file(config_path.as_path()) {
-        Some(toml_config) => config.merge_toml(profile_name, &toml_config),
-        None => (),
-    }
+    let config = match read_config_file(config_path.as_path()) {
+        Some(toml_config) => Config::from_toml(profile, &toml_config),
+        None => Config::default_config(),
+    };
 
     return config;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Profile, TomlProfile};
+    use super::{Config, TomlConfig, TomlProfile};
 
     #[test]
-    fn toml_profile_defaults() {
+    fn config_defaults() {
         let tp = TomlProfile {
             name: "test".to_string(),
             body: None,
@@ -220,12 +204,16 @@ mod tests {
             urgency: None,
         };
 
-        let p = Profile::from_toml(&tp);
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
 
-        assert_eq!(p.body, Profile::default_body());
-        assert_eq!(p.icon, Profile::default_icon());
-        assert_eq!(p.summary, Profile::default_summary());
-        assert_eq!(p.timeout, Profile::default_timeout());
-        assert_eq!(p.urgency, Profile::default_urgency());
+        let c = Config::from_toml("test", &tc);
+
+        assert_eq!(c.body, Config::default_body());
+        assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.summary, Config::default_summary());
+        assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.urgency, Config::default_urgency());
     }
 }
