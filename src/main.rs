@@ -3,7 +3,7 @@ mod config;
 use clap::{AppSettings, Parser, ValueHint};
 use config::Config;
 use humantime::format_duration;
-use notify_rust::{Notification, Urgency};
+use notify_rust::Notification;
 use std::process::{Command, ExitStatus};
 use std::time::{Duration, Instant};
 
@@ -49,15 +49,7 @@ fn update_conf_from_args(conf: &mut Config, args: &Args) {
     }
 
     if args.urgency.is_some() {
-        conf.urgency = match args.urgency.as_ref().unwrap().as_str() {
-            "low" => Urgency::Low,
-            "normal" => Urgency::Normal,
-            "critical" => Urgency::Critical,
-            _ => {
-                eprintln!("Invalid urgency setting; using default");
-                Urgency::Normal
-            }
-        }
+        conf.urgency = Config::parse_urgency(args.urgency.as_ref().unwrap().as_str());
     }
 }
 

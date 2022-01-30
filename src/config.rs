@@ -72,6 +72,18 @@ impl Config {
         }
     }
 
+    pub fn parse_urgency(urgency: &str) -> Urgency {
+        match urgency {
+            "low" => Urgency::Low,
+            "normal" => Urgency::Normal,
+            "critical" => Urgency::Critical,
+            _ => {
+                eprintln!("notify-complete: Invalid urgency value '{}'", urgency);
+                Urgency::Normal
+            }
+        }
+    }
+
     fn from_toml(profile: &str, toml: &TomlConfig) -> Config {
         if toml.profile.is_none() {
             // no profiles in config file, return default config
@@ -108,16 +120,8 @@ impl Config {
             None => Config::default_timeout(),
         };
 
-        let urgency = match &profile.urgency {
-            Some(urgency) => match urgency.as_str() {
-                "low" => Urgency::Low,
-                "normal" => Urgency::Normal,
-                "critical" => Urgency::Critical,
-                _ => {
-                    eprintln!("Invalid urgency setting '{}'", urgency);
-                    Config::default_urgency()
-                }
-            },
+        let urgency = match profile.urgency.as_ref() {
+            Some(u) => Config::parse_urgency(u.as_str()),
             None => Config::default_urgency(),
         };
 
@@ -309,78 +313,25 @@ mod tests {
 
     #[test]
     fn urgency_value_invalid() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: None,
-            urgency: Some("invalid".to_string()),
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        // this should print an error and return default
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.urgency, Config::default_urgency());
+        let urgency = Config::parse_urgency("invalid");
+        assert_eq!(urgency, Config::default_urgency());
     }
 
     #[test]
     fn urgency_value_low() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: None,
-            urgency: Some("low".to_string()),
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.urgency, Urgency::Low);
+        let urgency = Config::parse_urgency("low");
+        assert_eq!(urgency, Urgency::Low);
     }
 
     #[test]
     fn urgency_value_normal() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: None,
-            urgency: Some("normal".to_string()),
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.urgency, Urgency::Normal);
+        let urgency = Config::parse_urgency("normal");
+        assert_eq!(urgency, Urgency::Normal);
     }
 
     #[test]
     fn urgency_value_critical() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: None,
-            urgency: Some("critical".to_string()),
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.urgency, Urgency::Critical);
+        let urgency = Config::parse_urgency("critical");
+        assert_eq!(urgency, Urgency::Critical);
     }
 }

@@ -1,9 +1,5 @@
 # TODO
 
-- Change config format to support strings for timeout
-  - `default`, `never`, or a millisecond value
-- Remove duplicate parsing of values
-  - Config file does it and arg parsing
 - Rename `summary` to `title`
 - Rename `body` to `message`
 - `Args` unit tests
