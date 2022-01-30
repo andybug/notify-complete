@@ -2,7 +2,7 @@ mod config;
 
 use clap::{AppSettings, Parser, ValueHint};
 use humantime::format_duration;
-use notify_rust::Notification;
+use notify_rust::{Notification, Timeout, Urgency};
 use std::process::{Command, ExitStatus};
 use std::time::{Duration, Instant};
 
@@ -24,6 +24,12 @@ struct Args {
     #[clap(short, long, help = "Notification contents.")]
     body: Option<String>,
 
+    #[clap(short, long, help = "Notification timeout in ms or 'never'/'default'.")]
+    timeout: Option<String>,
+
+    #[clap(short, long, help = "Notification urgency (low, normal, critical)")]
+    urgency: Option<String>,
+
     #[clap(required = true, multiple_values = true, value_hint = ValueHint::CommandWithArguments, name = "cmd-with-args")]
     cmd: Vec<String>,
 }
@@ -35,6 +41,32 @@ fn update_conf_from_args(conf: &mut config::Config, args: &Args) {
 
     if args.body.is_some() {
         conf.body = String::from(args.body.as_ref().unwrap());
+    }
+
+    if args.timeout.is_some() {
+        conf.timeout = match args.timeout.as_ref().unwrap().as_str() {
+            "default" => Timeout::Default,
+            "never" => Timeout::Never,
+            _ => match args.timeout.as_ref().unwrap().parse::<u32>() {
+                Ok(ms) => Timeout::Milliseconds(ms),
+                Err(_) => {
+                    eprintln!("Invalid timeout setting; using default");
+                    Timeout::Default
+                }
+            },
+        }
+    }
+
+    if args.urgency.is_some() {
+        conf.urgency = match args.urgency.as_ref().unwrap().as_str() {
+            "low" => Urgency::Low,
+            "normal" => Urgency::Normal,
+            "critical" => Urgency::Critical,
+            _ => {
+                eprintln!("Invalid urgency setting; using default");
+                Urgency::Normal
+            }
+        }
     }
 }
 
@@ -49,6 +81,8 @@ fn send_notification(conf: &config::Config, duration: Duration, status: ExitStat
     let result = Notification::new()
         .summary(conf.summary.as_str())
         .body(body.as_str())
+        .timeout(conf.timeout)
+        .urgency(conf.urgency)
         .appname("notify-complete")
         .show();
 
