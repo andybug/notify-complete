@@ -1,8 +1,9 @@
 mod config;
 
 use clap::{AppSettings, Parser, ValueHint};
+use config::Config;
 use humantime::format_duration;
-use notify_rust::{Notification, Timeout, Urgency};
+use notify_rust::{Notification, Urgency};
 use std::process::{Command, ExitStatus};
 use std::time::{Duration, Instant};
 
@@ -34,7 +35,7 @@ struct Args {
     cmd: Vec<String>,
 }
 
-fn update_conf_from_args(conf: &mut config::Config, args: &Args) {
+fn update_conf_from_args(conf: &mut Config, args: &Args) {
     if args.summary.is_some() {
         conf.summary = String::from(args.summary.as_ref().unwrap());
     }
@@ -44,17 +45,7 @@ fn update_conf_from_args(conf: &mut config::Config, args: &Args) {
     }
 
     if args.timeout.is_some() {
-        conf.timeout = match args.timeout.as_ref().unwrap().as_str() {
-            "default" => Timeout::Default,
-            "never" => Timeout::Never,
-            _ => match args.timeout.as_ref().unwrap().parse::<u32>() {
-                Ok(ms) => Timeout::Milliseconds(ms),
-                Err(_) => {
-                    eprintln!("Invalid timeout setting; using default");
-                    Timeout::Default
-                }
-            },
-        }
+        conf.timeout = Config::parse_timeout(args.timeout.as_ref().unwrap().as_str());
     }
 
     if args.urgency.is_some() {

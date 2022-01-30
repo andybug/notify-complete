@@ -10,7 +10,7 @@ struct TomlProfile {
     body: Option<String>,
     icon: Option<String>,
     summary: Option<String>,
-    timeout: Option<i32>,
+    timeout: Option<String>,
     urgency: Option<String>,
 }
 
@@ -58,6 +58,20 @@ impl Config {
         Urgency::Normal
     }
 
+    pub fn parse_timeout(timeout: &str) -> Timeout {
+        match timeout {
+            "default" => Timeout::Default,
+            "never" => Timeout::Never,
+            _ => match timeout.parse::<u32>() {
+                Ok(ms) => Timeout::Milliseconds(ms),
+                Err(_) => {
+                    eprintln!("notify-complete: Error parsing timeout value '{}'", timeout);
+                    Timeout::Default
+                }
+            },
+        }
+    }
+
     fn from_toml(profile: &str, toml: &TomlConfig) -> Config {
         if toml.profile.is_none() {
             // no profiles in config file, return default config
@@ -89,19 +103,8 @@ impl Config {
             None => Config::default_summary(),
         };
 
-        let timeout = match &profile.timeout {
-            Some(timeout) => match *timeout {
-                -1 => Timeout::Default,
-                0 => Timeout::Never,
-                _ => {
-                    if *timeout < 0 {
-                        eprintln!("Invalid timeout value {}", timeout);
-                        Config::default_timeout()
-                    } else {
-                        Timeout::Milliseconds(*timeout as u32)
-                    }
-                }
-            },
+        let timeout = match profile.timeout.as_ref() {
+            Some(t) => Config::parse_timeout(t.as_str()),
             None => Config::default_timeout(),
         };
 
@@ -262,7 +265,7 @@ mod tests {
             body: Some("body".to_string()),
             icon: Some("icon".to_string()),
             summary: Some("summary".to_string()),
-            timeout: Some(5000),
+            timeout: Some("5000".to_string()),
             urgency: Some("critical".to_string()),
         };
 
@@ -280,80 +283,28 @@ mod tests {
     }
 
     #[test]
-    fn timeout_value_less() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: Some(-2),
-            urgency: None,
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        // with timeout < -1, print an error and return default
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.timeout, Config::default_timeout());
-    }
-
-    #[test]
     fn timeout_value_default() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: Some(-1),
-            urgency: None,
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.timeout, Config::default_timeout());
+        let timeout = Config::parse_timeout("default");
+        assert_eq!(timeout, Timeout::Default);
     }
 
     #[test]
     fn timeout_value_never() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: Some(0),
-            urgency: None,
-        };
+        let timeout = Config::parse_timeout("never");
+        assert_eq!(timeout, Timeout::Never);
+    }
 
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.timeout, Timeout::Never);
+    #[test]
+    fn timeout_value_negative() {
+        // if timeout < 0, print and error and use the default
+        let timeout = Config::parse_timeout("-1");
+        assert_eq!(timeout, Config::default_timeout());
     }
 
     #[test]
     fn timeout_value_ms() {
-        let tp = TomlProfile {
-            name: "test".to_string(),
-            body: None,
-            icon: None,
-            summary: None,
-            timeout: Some(5000),
-            urgency: None,
-        };
-
-        let tc = TomlConfig {
-            profile: Some(vec![tp]),
-        };
-
-        let c = Config::from_toml("test", &tc);
-        assert_eq!(c.timeout, Timeout::Milliseconds(5000));
+        let timeout = Config::parse_timeout("3000");
+        assert_eq!(timeout, Timeout::Milliseconds(3000));
     }
 
     #[test]
