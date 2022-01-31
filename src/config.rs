@@ -7,8 +7,8 @@ use std::vec::Vec;
 #[derive(Debug, Deserialize)]
 struct TomlProfile {
     name: String,
-    body: Option<String>,
     icon: Option<String>,
+    message: Option<String>,
     timeout: Option<String>,
     title: Option<String>,
     urgency: Option<String>,
@@ -20,8 +20,8 @@ struct TomlConfig {
 }
 
 pub struct Config {
-    pub body: String,
     pub icon: String,
+    pub message: String,
     pub timeout: Timeout,
     pub title: String,
     pub urgency: Urgency,
@@ -30,19 +30,19 @@ pub struct Config {
 impl Config {
     fn default_config() -> Config {
         Config {
-            body: Config::default_body(),
             icon: Config::default_icon(),
+            message: Config::default_message(),
             timeout: Config::default_timeout(),
             title: Config::default_title(),
             urgency: Config::default_urgency(),
         }
     }
 
-    fn default_body() -> String {
+    fn default_icon() -> String {
         String::new()
     }
 
-    fn default_icon() -> String {
+    fn default_message() -> String {
         String::new()
     }
 
@@ -100,14 +100,14 @@ impl Config {
     }
 
     fn from_toml_profile(profile: &TomlProfile) -> Config {
-        let body = match &profile.body {
-            Some(body) => String::from(body),
-            None => Config::default_body(),
-        };
-
         let icon = match &profile.icon {
             Some(icon) => String::from(icon),
             None => Config::default_icon(),
+        };
+
+        let message = match &profile.message {
+            Some(message) => String::from(message),
+            None => Config::default_message(),
         };
 
         let timeout = match profile.timeout.as_ref() {
@@ -126,8 +126,8 @@ impl Config {
         };
 
         Config {
-            body,
             icon,
+            message,
             timeout,
             title,
             urgency,
@@ -207,8 +207,8 @@ mod tests {
         let tc = TomlConfig { profile: None };
         let c = Config::from_toml("doesn't matter", &tc);
 
-        assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.message, Config::default_message());
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
@@ -218,8 +218,8 @@ mod tests {
     fn profile_defaults() {
         let tp = TomlProfile {
             name: "test".to_string(),
-            body: None,
             icon: None,
+            message: None,
             timeout: None,
             title: None,
             urgency: None,
@@ -231,8 +231,8 @@ mod tests {
 
         let c = Config::from_toml("test", &tc);
 
-        assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.message, Config::default_message());
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
@@ -242,8 +242,8 @@ mod tests {
     fn profile_not_found() {
         let tp = TomlProfile {
             name: "test".to_string(),
-            body: None,
             icon: None,
+            message: None,
             timeout: None,
             title: None,
             urgency: None,
@@ -255,8 +255,8 @@ mod tests {
 
         let c = Config::from_toml("does not exist", &tc);
 
-        assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.message, Config::default_message());
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
@@ -266,8 +266,8 @@ mod tests {
     fn profile_values() {
         let tp = TomlProfile {
             name: "test".to_string(),
-            body: Some("body".to_string()),
             icon: Some("icon".to_string()),
+            message: Some("message".to_string()),
             timeout: Some("5000".to_string()),
             title: Some("title".to_string()),
             urgency: Some("critical".to_string()),
@@ -279,8 +279,8 @@ mod tests {
 
         let c = Config::from_toml("test", &tc);
 
-        assert_eq!(c.body, "body");
         assert_eq!(c.icon, "icon");
+        assert_eq!(c.message, "message");
         assert_eq!(c.timeout, Timeout::Milliseconds(5000));
         assert_eq!(c.title, "title");
         assert_eq!(c.urgency, Urgency::Critical);

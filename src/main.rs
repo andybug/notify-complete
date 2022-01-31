@@ -23,7 +23,7 @@ struct Args {
     title: Option<String>,
 
     #[clap(short, long, help = "Notification contents.")]
-    body: Option<String>,
+    message: Option<String>,
 
     #[clap(
         short = 'o',
@@ -44,8 +44,8 @@ fn update_conf_from_args(conf: &mut Config, args: &Args) {
         conf.title = String::from(args.title.as_ref().unwrap());
     }
 
-    if args.body.is_some() {
-        conf.body = String::from(args.body.as_ref().unwrap());
+    if args.message.is_some() {
+        conf.message = String::from(args.message.as_ref().unwrap());
     }
 
     if args.timeout.is_some() {
@@ -60,14 +60,14 @@ fn update_conf_from_args(conf: &mut Config, args: &Args) {
 fn send_notification(conf: &config::Config, duration: Duration, status: ExitStatus) {
     let duration_str = format_duration(duration).to_string();
 
-    let mut body = String::from(conf.body.as_str());
-    body.push('\n');
-    body.push_str(&format!("Result: {}\n", status.code().unwrap()));
-    body.push_str(&format!("Completed in {}", duration_str));
+    let mut message = String::from(conf.message.as_str());
+    message.push('\n');
+    message.push_str(&format!("Result: {}\n", status.code().unwrap()));
+    message.push_str(&format!("Completed in {}", duration_str));
 
     let result = Notification::new()
         .summary(conf.title.as_str())
-        .body(body.as_str())
+        .body(message.as_str())
         .timeout(conf.timeout)
         .urgency(conf.urgency)
         .appname("notify-complete")
