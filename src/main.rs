@@ -4,7 +4,7 @@ use clap::{AppSettings, Parser, ValueHint};
 use config::Config;
 use humantime::format_duration;
 use notify_rust::Notification;
-use std::process::{Command, ExitStatus};
+use std::process::{self, Command, ExitStatus};
 use std::time::{Duration, Instant};
 
 // Runs a command and sends a notification upon completion
@@ -74,7 +74,7 @@ fn send_notification(conf: &config::Config, duration: Duration, status: ExitStat
         .show();
 
     match result {
-        Ok(handle) => println!("id = {}", handle.id()),
+        Ok(_) => (),
         Err(e) => println!("{}", e),
     }
 }
@@ -98,5 +98,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     send_notification(&conf, elapsed_sec, child_result);
 
-    Ok(())
+    match child_result.code() {
+        Some(code) => match code {
+            0 => Ok(()),
+            _ => process::exit(code),
+        },
+        None => {
+            eprintln!("notify-complete: Child killed by signal");
+            Ok(())
+        }
+    }
 }
