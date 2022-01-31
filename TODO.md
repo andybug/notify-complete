@@ -1,6 +1,5 @@
 # TODO
 
-- Rename `summary` to `title`
 - Rename `body` to `message`
 - `Args` unit tests
 - Return child process exit code as program's exit code
@@ -10,3 +9,5 @@
   - `notify-complete: error goes here`
 - Update notifications with progress
 - DRY up config tests
+- Write summary to stdout
+  - exit code, time took, etc. 

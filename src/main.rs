@@ -20,12 +20,16 @@ struct Args {
     profile: String,
 
     #[clap(short, long, help = "Title of the notification.")]
-    summary: Option<String>,
+    title: Option<String>,
 
     #[clap(short, long, help = "Notification contents.")]
     body: Option<String>,
 
-    #[clap(short, long, help = "Notification timeout in ms or 'never'/'default'.")]
+    #[clap(
+        short = 'o',
+        long,
+        help = "Notification timeout in ms or 'never'/'default'."
+    )]
     timeout: Option<String>,
 
     #[clap(short, long, help = "Notification urgency (low, normal, critical)")]
@@ -36,8 +40,8 @@ struct Args {
 }
 
 fn update_conf_from_args(conf: &mut Config, args: &Args) {
-    if args.summary.is_some() {
-        conf.summary = String::from(args.summary.as_ref().unwrap());
+    if args.title.is_some() {
+        conf.title = String::from(args.title.as_ref().unwrap());
     }
 
     if args.body.is_some() {
@@ -62,7 +66,7 @@ fn send_notification(conf: &config::Config, duration: Duration, status: ExitStat
     body.push_str(&format!("Completed in {}", duration_str));
 
     let result = Notification::new()
-        .summary(conf.summary.as_str())
+        .summary(conf.title.as_str())
         .body(body.as_str())
         .timeout(conf.timeout)
         .urgency(conf.urgency)

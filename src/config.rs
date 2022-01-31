@@ -9,8 +9,8 @@ struct TomlProfile {
     name: String,
     body: Option<String>,
     icon: Option<String>,
-    summary: Option<String>,
     timeout: Option<String>,
+    title: Option<String>,
     urgency: Option<String>,
 }
 
@@ -22,8 +22,8 @@ struct TomlConfig {
 pub struct Config {
     pub body: String,
     pub icon: String,
-    pub summary: String,
     pub timeout: Timeout,
+    pub title: String,
     pub urgency: Urgency,
 }
 
@@ -32,8 +32,8 @@ impl Config {
         Config {
             body: Config::default_body(),
             icon: Config::default_icon(),
-            summary: Config::default_summary(),
             timeout: Config::default_timeout(),
+            title: Config::default_title(),
             urgency: Config::default_urgency(),
         }
     }
@@ -46,7 +46,7 @@ impl Config {
         String::new()
     }
 
-    fn default_summary() -> String {
+    fn default_title() -> String {
         String::from("Command completed")
     }
 
@@ -110,14 +110,14 @@ impl Config {
             None => Config::default_icon(),
         };
 
-        let summary = match &profile.summary {
-            Some(summary) => String::from(summary),
-            None => Config::default_summary(),
-        };
-
         let timeout = match profile.timeout.as_ref() {
             Some(t) => Config::parse_timeout(t.as_str()),
             None => Config::default_timeout(),
+        };
+
+        let title = match &profile.title {
+            Some(title) => String::from(title),
+            None => Config::default_title(),
         };
 
         let urgency = match profile.urgency.as_ref() {
@@ -128,8 +128,8 @@ impl Config {
         Config {
             body,
             icon,
-            summary,
             timeout,
+            title,
             urgency,
         }
     }
@@ -209,8 +209,8 @@ mod tests {
 
         assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
-        assert_eq!(c.summary, Config::default_summary());
         assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
     }
 
@@ -220,8 +220,8 @@ mod tests {
             name: "test".to_string(),
             body: None,
             icon: None,
-            summary: None,
             timeout: None,
+            title: None,
             urgency: None,
         };
 
@@ -233,8 +233,8 @@ mod tests {
 
         assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
-        assert_eq!(c.summary, Config::default_summary());
         assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
     }
 
@@ -244,8 +244,8 @@ mod tests {
             name: "test".to_string(),
             body: None,
             icon: None,
-            summary: None,
             timeout: None,
+            title: None,
             urgency: None,
         };
 
@@ -257,8 +257,8 @@ mod tests {
 
         assert_eq!(c.body, Config::default_body());
         assert_eq!(c.icon, Config::default_icon());
-        assert_eq!(c.summary, Config::default_summary());
         assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
     }
 
@@ -268,8 +268,8 @@ mod tests {
             name: "test".to_string(),
             body: Some("body".to_string()),
             icon: Some("icon".to_string()),
-            summary: Some("summary".to_string()),
             timeout: Some("5000".to_string()),
+            title: Some("title".to_string()),
             urgency: Some("critical".to_string()),
         };
 
@@ -281,8 +281,8 @@ mod tests {
 
         assert_eq!(c.body, "body");
         assert_eq!(c.icon, "icon");
-        assert_eq!(c.summary, "summary");
         assert_eq!(c.timeout, Timeout::Milliseconds(5000));
+        assert_eq!(c.title, "title");
         assert_eq!(c.urgency, Urgency::Critical);
     }
 
