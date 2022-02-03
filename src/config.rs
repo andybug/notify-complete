@@ -1,3 +1,4 @@
+use clap::Parser;
 use notify_rust::{Timeout, Urgency};
 use serde_derive::Deserialize;
 use std::fs;
@@ -12,6 +13,7 @@ struct TomlProfile {
     timeout: Option<String>,
     title: Option<String>,
     urgency: Option<String>,
+    command: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -25,6 +27,7 @@ pub struct Config {
     pub timeout: Timeout,
     pub title: String,
     pub urgency: Urgency,
+    pub command: Vec<String>,
 }
 
 impl Config {
@@ -35,6 +38,7 @@ impl Config {
             timeout: Config::default_timeout(),
             title: Config::default_title(),
             urgency: Config::default_urgency(),
+            command: Config::default_command(),
         }
     }
 
@@ -56,6 +60,53 @@ impl Config {
 
     fn default_urgency() -> Urgency {
         Urgency::Normal
+    }
+
+    fn default_command() -> Vec<String> {
+        vec![]
+    }
+
+    pub fn new() -> Config {
+        let args = std::env::args().collect();
+        let config_path = get_config_path();
+        let toml_config = read_config_file(config_path.as_path());
+
+        return Config::new_from(args, &toml_config);
+    }
+
+    //fn new_from(arguments: &mut dyn std::iter::Iterator<Item = String>, toml_config: &Option<TomlConfig>) -> Config {
+    fn new_from(arguments: Vec<String>, toml_config: &Option<TomlConfig>) -> Config {
+        let args = args::Args::parse_from(arguments);
+
+        let mut conf = match toml_config {
+            Some(tc) => {
+                if tc.profile.is_none() {
+                    Config::default_config()
+                } else {
+                    Config::from_toml(args.get_profile(), tc)
+                }
+            }
+            None => Config::default_config(),
+        };
+
+        if args.title.is_some() {
+            conf.title = String::from(args.title.as_ref().unwrap());
+        }
+
+        if args.message.is_some() {
+            conf.message = String::from(args.message.as_ref().unwrap());
+        }
+
+        if args.timeout.is_some() {
+            conf.timeout = Config::parse_timeout(args.timeout.as_ref().unwrap().as_str());
+        }
+
+        if args.urgency.is_some() {
+            conf.urgency = Config::parse_urgency(args.urgency.as_ref().unwrap().as_str());
+        }
+
+        conf.command = args.command;
+        conf
     }
 
     pub fn parse_timeout(timeout: &str) -> Timeout {
@@ -82,6 +133,15 @@ impl Config {
                 Urgency::Normal
             }
         }
+    }
+
+    fn parse_command(command: &str) -> Vec<String> {
+        let components = command.split_whitespace();
+        let mut cmd_vec = Vec::new();
+        for component in components {
+            cmd_vec.push(String::from(component));
+        }
+        cmd_vec
     }
 
     fn from_toml(profile: &str, toml: &TomlConfig) -> Config {
@@ -125,12 +185,18 @@ impl Config {
             None => Config::default_urgency(),
         };
 
+        let command = match &profile.command.as_ref() {
+            Some(c) => Config::parse_command(c.as_str()),
+            None => Config::default_command(),
+        };
+
         Config {
             icon,
             message,
             timeout,
             title,
             urgency,
+            command,
         }
     }
 }
@@ -185,22 +251,10 @@ fn read_config_file(path: &Path) -> Option<TomlConfig> {
     Some(conf)
 }
 
-pub fn get_config(profile: &str) -> Config {
-    let config_path = get_config_path();
-
-    let config = match read_config_file(config_path.as_path()) {
-        Some(toml_config) => Config::from_toml(profile, &toml_config),
-        None => Config::default_config(),
-    };
-
-    return config;
-}
-
 #[cfg(test)]
-mod tests {
-    use notify_rust::{Timeout, Urgency};
-
+mod toml_tests {
     use super::{Config, TomlConfig, TomlProfile};
+    use notify_rust::{Timeout, Urgency};
 
     #[test]
     fn config_defaults() {
@@ -212,6 +266,7 @@ mod tests {
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
+        assert_eq!(c.command, Config::default_command());
     }
 
     #[test]
@@ -223,6 +278,7 @@ mod tests {
             timeout: None,
             title: None,
             urgency: None,
+            command: None,
         };
 
         let tc = TomlConfig {
@@ -236,6 +292,7 @@ mod tests {
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
+        assert_eq!(c.command, Config::default_command());
     }
 
     #[test]
@@ -247,6 +304,7 @@ mod tests {
             timeout: None,
             title: None,
             urgency: None,
+            command: None,
         };
 
         let tc = TomlConfig {
@@ -260,6 +318,7 @@ mod tests {
         assert_eq!(c.timeout, Config::default_timeout());
         assert_eq!(c.title, Config::default_title());
         assert_eq!(c.urgency, Config::default_urgency());
+        assert_eq!(c.command, Config::default_command());
     }
 
     #[test]
@@ -271,6 +330,7 @@ mod tests {
             timeout: Some("5000".to_string()),
             title: Some("title".to_string()),
             urgency: Some("critical".to_string()),
+            command: Some("echo hello".to_string()),
         };
 
         let tc = TomlConfig {
@@ -284,7 +344,71 @@ mod tests {
         assert_eq!(c.timeout, Timeout::Milliseconds(5000));
         assert_eq!(c.title, "title");
         assert_eq!(c.urgency, Urgency::Critical);
+        assert_eq!(c.command, vec!["echo", "hello"]);
     }
+}
+
+#[cfg(test)]
+mod new_from_tests {
+    use super::{Config, TomlConfig, TomlProfile};
+    use notify_rust::{Timeout, Urgency};
+
+    #[test]
+    fn default_values() {
+        let tc = TomlConfig { profile: None };
+        let c = Config::new_from(
+            vec!["notify-complete", "sleep", "1"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            &Some(tc),
+        );
+
+        assert_eq!(c.icon, Config::default_icon());
+        assert_eq!(c.message, Config::default_message());
+        assert_eq!(c.timeout, Config::default_timeout());
+        assert_eq!(c.title, Config::default_title());
+        assert_eq!(c.urgency, Config::default_urgency());
+        assert_eq!(c.command, vec!["sleep", "1"]);
+    }
+
+    #[test]
+    fn profile() {
+        let tp = TomlProfile {
+            name: "test".to_string(),
+            icon: Some("icon".to_string()),
+            message: Some("message".to_string()),
+            timeout: Some("5000".to_string()),
+            title: Some("title".to_string()),
+            urgency: Some("critical".to_string()),
+            command: None,
+        };
+
+        let tc = TomlConfig {
+            profile: Some(vec![tp]),
+        };
+
+        let c = Config::new_from(
+            vec!["notify-complete", "-p", "test", "echo", "test"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            &Some(tc),
+        );
+
+        assert_eq!(c.icon, "icon");
+        assert_eq!(c.message, "message");
+        assert_eq!(c.timeout, Timeout::Milliseconds(5000));
+        assert_eq!(c.title, "title");
+        assert_eq!(c.urgency, Urgency::Critical);
+        assert_eq!(c.command, vec!["echo", "test"]);
+    }
+}
+
+#[cfg(test)]
+mod value_parsing_tests {
+    use super::Config;
+    use notify_rust::{Timeout, Urgency};
 
     #[test]
     fn timeout_value_default() {
@@ -333,5 +457,102 @@ mod tests {
     fn urgency_value_critical() {
         let urgency = Config::parse_urgency("critical");
         assert_eq!(urgency, Urgency::Critical);
+    }
+}
+
+mod args {
+    use clap::{AppSettings, Parser, ValueHint};
+
+    // Runs a command and sends a notification upon completion
+    #[derive(Parser, Debug)]
+    #[clap(author, version, about, long_about = None, setting = AppSettings::TrailingVarArg)]
+    pub struct Args {
+        #[clap(
+            short,
+            long,
+            default_value = "default",
+            help = "The name of the profile to use for the notification."
+        )]
+        profile: String,
+
+        #[clap(short, long, help = "Title of the notification.")]
+        pub title: Option<String>,
+
+        #[clap(short, long, help = "Notification contents.")]
+        pub message: Option<String>,
+
+        #[clap(
+            short = 'o',
+            long,
+            help = "Notification timeout in ms or 'never'/'default'."
+        )]
+        pub timeout: Option<String>,
+
+        #[clap(short, long, help = "Notification urgency (low, normal, critical)")]
+        pub urgency: Option<String>,
+
+        #[clap(required = true, multiple_values = true, value_hint = ValueHint::CommandWithArguments, name = "cmd-with-args")]
+        pub command: Vec<String>,
+    }
+
+    impl Args {
+        pub fn get_profile(&self) -> &str {
+            self.profile.as_str()
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use clap::StructOpt;
+
+        use super::Args;
+
+        #[test]
+        fn args_no_cmd() {
+            let args = vec!["notify-complete"];
+            let result = Args::try_parse_from(args);
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn args_cmd_only() {
+            let args = vec!["notify-complete", "fake-cmd"];
+            let parsed = Args::parse_from(args);
+
+            assert_eq!(parsed.profile, "default");
+            assert_eq!(parsed.title, None);
+            assert_eq!(parsed.message, None);
+            assert_eq!(parsed.timeout, None);
+            assert_eq!(parsed.urgency, None);
+            assert_eq!(parsed.command, vec!["fake-cmd"]);
+        }
+
+        #[test]
+        fn args_all() {
+            let args = vec![
+                "notify-complete",
+                "-p",
+                "test-profile",
+                "-t",
+                "Unit test",
+                "-m",
+                "This is a unit test.",
+                "-o",
+                "never",
+                "-u",
+                "low",
+                "fake-cmd",
+                "--option",
+                "yes",
+            ];
+            let parsed = Args::parse_from(args);
+
+            assert_eq!(parsed.profile, "test-profile");
+            assert_eq!(parsed.title.unwrap(), "Unit test");
+            assert_eq!(parsed.message.unwrap(), "This is a unit test.");
+            assert_eq!(parsed.timeout.unwrap(), "never");
+            assert_eq!(parsed.urgency.unwrap(), "low");
+            assert_eq!(parsed.command, vec!["fake-cmd", "--option", "yes"]);
+        }
     }
 }

@@ -1,61 +1,10 @@
 mod config;
 
-use clap::{AppSettings, Parser, ValueHint};
-use config::Config;
+use crate::config::Config;
 use humantime::format_duration;
 use notify_rust::Notification;
 use std::process::{self, Command, ExitStatus};
 use std::time::{Duration, Instant};
-
-// Runs a command and sends a notification upon completion
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None, setting = AppSettings::TrailingVarArg)]
-struct Args {
-    #[clap(
-        short,
-        long,
-        default_value = "default",
-        help = "The name of the profile to use for the notification."
-    )]
-    profile: String,
-
-    #[clap(short, long, help = "Title of the notification.")]
-    title: Option<String>,
-
-    #[clap(short, long, help = "Notification contents.")]
-    message: Option<String>,
-
-    #[clap(
-        short = 'o',
-        long,
-        help = "Notification timeout in ms or 'never'/'default'."
-    )]
-    timeout: Option<String>,
-
-    #[clap(short, long, help = "Notification urgency (low, normal, critical)")]
-    urgency: Option<String>,
-
-    #[clap(required = true, multiple_values = true, value_hint = ValueHint::CommandWithArguments, name = "cmd-with-args")]
-    cmd: Vec<String>,
-}
-
-fn update_conf_from_args(conf: &mut Config, args: &Args) {
-    if args.title.is_some() {
-        conf.title = String::from(args.title.as_ref().unwrap());
-    }
-
-    if args.message.is_some() {
-        conf.message = String::from(args.message.as_ref().unwrap());
-    }
-
-    if args.timeout.is_some() {
-        conf.timeout = Config::parse_timeout(args.timeout.as_ref().unwrap().as_str());
-    }
-
-    if args.urgency.is_some() {
-        conf.urgency = Config::parse_urgency(args.urgency.as_ref().unwrap().as_str());
-    }
-}
 
 fn send_notification(conf: &config::Config, duration: Duration, status: ExitStatus) {
     let duration_str = format_duration(duration).to_string();
@@ -65,13 +14,16 @@ fn send_notification(conf: &config::Config, duration: Duration, status: ExitStat
     message.push_str(&format!("Result: {}\n", status.code().unwrap()));
     message.push_str(&format!("Completed in {}", duration_str));
 
-    let result = Notification::new()
-        .summary(conf.title.as_str())
-        .body(message.as_str())
-        .timeout(conf.timeout)
-        .urgency(conf.urgency)
-        .appname("notify-complete")
-        .show();
+    let mut notification = Notification::new();
+    notification.summary(conf.title.as_str());
+    notification.body(message.as_str());
+    notification.timeout(conf.timeout);
+    notification.appname("notify-complete");
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    notification.urgency(conf.urgency);
+
+    let result = notification.show();
 
     match result {
         Ok(_) => (),
@@ -80,15 +32,12 @@ fn send_notification(conf: &config::Config, duration: Duration, status: ExitStat
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let mut conf = config::get_config(args.profile.as_str());
-
-    update_conf_from_args(&mut conf, &args);
+    let conf = Config::new();
 
     let start = Instant::now();
 
-    let mut child = Command::new(args.cmd[0].as_str())
-        .args(&args.cmd[1..])
+    let mut child = Command::new(conf.command[0].as_str())
+        .args(&conf.command[1..])
         .spawn()
         .expect("Error creating child process");
 
