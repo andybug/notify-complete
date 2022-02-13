@@ -210,7 +210,7 @@ fn get_config_path() -> PathBuf {
         None => {
             let default_path = format!("~/.config/{}/{}", CONFIG_DIR, CONFIG_FILE);
             eprintln!(
-                "Could not determine user config directory -- using {}",
+                "notify-complete: Could not determine user config directory -- using {}",
                 default_path
             );
             return PathBuf::from(default_path);
@@ -232,7 +232,7 @@ fn read_config_file(path: &Path) -> Option<TomlConfig> {
         Ok(s) => s,
         Err(e) => {
             eprintln!(
-                "Error reading config file '{}': {}",
+                "notify-complete: Error reading config file '{}': {}",
                 path.to_str().unwrap(),
                 e
             );
@@ -243,7 +243,7 @@ fn read_config_file(path: &Path) -> Option<TomlConfig> {
     let conf: TomlConfig = match toml::from_str(&contents) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error parsing config file: {}", e);
+            eprintln!("notify-complete: Error parsing config file: {}", e);
             return None;
         }
     };
