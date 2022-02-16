@@ -1,9 +1,5 @@
 # TODO
 
-## 0.1
-
-- DRY up config tests
-
 ## Post 0.1
 
 - manpage

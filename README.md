@@ -6,8 +6,6 @@ system notification upon completion.
 ## Installation
 
 ```shell
-cargo build --release
-cargo test --release
 cargo install --path .
 ```
 
