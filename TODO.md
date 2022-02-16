@@ -3,10 +3,9 @@
 ## 0.1
 
 - DRY up config tests
-- README
-  - better description
-  - usage
-  - example config
+
+## Post 0.1
+
 - manpage
   - generate from markdown?
 - PKGBUILD
