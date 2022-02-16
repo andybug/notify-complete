@@ -10,7 +10,9 @@ fn send_notification(conf: &config::Config, _exit_code: i32, duration: Duration)
     let duration_str = format_duration(duration).to_string();
 
     let mut message = String::from(conf.message.as_str());
-    message.push('\n');
+    if message.len() > 0 {
+        message.push('\n');
+    }
     message.push_str(&format!("Completed in {}", duration_str));
 
     let mut notification = Notification::new();
