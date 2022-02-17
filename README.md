@@ -1,11 +1,22 @@
 # Notify Complete
 
 `notify-complete` is a simple utility to that runs a command and then displays a
-system notification upon completion.
+system notification upon completion. Various aspects of the notification can be
+configured via the CLI or a config file.
 
 ## Installation
 
+### Arch Linux (AUR)
+
 ```shell
+paru -S notify-complete
+```
+
+### Cargo
+
+```shell
+git clone https://github.com/andybug/notify-complete.git
+cd notify-complete
 cargo install --path .
 ```
 

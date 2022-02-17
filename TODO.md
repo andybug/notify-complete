@@ -1,12 +1,23 @@
 # TODO
 
-## Post 0.1
+## 0.1.1
+
+- Fix warning from most recent `clap` version:
+  ```
+  warning: use of deprecated variant `clap::AppSettings::TrailingVarArg`: Replaced with `Command::trailing_var_arg` and `Command::is_trailing_var_arg_set`
+     --> src/config.rs:468:78
+      |
+  468 |     #[clap(author, version, about, long_about = None, setting = AppSettings::TrailingVarArg)]
+      |                                                                              ^^^^^^^^^^^^^^
+      |
+      = note: `#[warn(deprecated)]` on by default
+  ```
+
+## Pre-0.2
 
 - manpage
   - generate from markdown?
-- PKGBUILD
-- cargo
-- AUR
+- crates.io
 
 ## 0.2
 
