@@ -461,11 +461,11 @@ mod value_parsing_tests {
 }
 
 mod args {
-    use clap::{AppSettings, Parser, ValueHint};
+    use clap::{Parser, ValueHint};
 
     // Runs a command and sends a notification upon completion
     #[derive(Parser, Debug)]
-    #[clap(author, version, about, long_about = None, setting = AppSettings::TrailingVarArg)]
+    #[clap(author, version, about, long_about = None, trailing_var_arg = true)]
     pub struct Args {
         #[clap(
             short,
