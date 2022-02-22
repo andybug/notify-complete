@@ -87,8 +87,9 @@ example configuration is presented below.
 
 ```toml
 [[profile]]
-name = "alert" # this is the only required field
-title = "Something bad happened"
+name = "complete-example" # name is the only required field
+title = "My Notification"
+message = "This is the message body"
 urgency = "critical"
 timeout = "never"
 
